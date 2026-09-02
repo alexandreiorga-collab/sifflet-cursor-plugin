@@ -85,12 +85,14 @@ The plugin registers the `sifflet` MCP server through `mcp.json`. It starts `run
 ### Safety guardrail
 
 A bundled hook gates destructive or potentially-destructive actions and surfaces a native
-confirmation prompt before they run: `sifflet ... apply`, `--auto-approve`, removing or
-renaming monitor/`workspace.yaml` files, and mutating Sifflet MCP calls (incident
-open/close). The behavioral protocol lives in the `sifflet-quality-as-code` skill. The hook
-ships for both Cursor (`hooks/cursor-hooks.json`) and Claude Code (`hooks/hooks.json`)
+confirmation prompt before they run: `sifflet ... apply`, `--auto-approve`,
+`sifflet code workspace delete`, removing or renaming monitor/`workspace.yaml` files,
+reads of `~/.sifflet/config.ini` (it stores the API token), and mutating Sifflet MCP calls
+(incident open/close). The behavioral protocol lives in the `sifflet-quality-as-code` skill.
+The hook ships for both Cursor (`hooks/cursor-hooks.json`) and Claude Code (`hooks/hooks.json`)
 and shares one script (`hooks/guard-sifflet-destructive.py`); it requires `python3` on PATH
-and is configured fail-closed.
+and is configured fail-closed on both platforms (Cursor via `failClosed`, Claude Code via a
+blocking exit code). The guard has a test suite in `tests/` (`pytest tests/`).
 
 ## Monitors as Code
 
