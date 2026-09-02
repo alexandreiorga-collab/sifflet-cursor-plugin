@@ -7,11 +7,14 @@ the platform-appropriate decision, asking for explicit user confirmation before
 any destructive or potentially-destructive Sifflet action:
 
   - `sifflet ... apply` (interactive or with --auto-approve/--yes/--force)
+  - `sifflet code workspace delete` (removes the workspace AND every attached monitor)
+  - reading or copying `~/.sifflet/config.ini` (stores the API token in plain text)
   - removing/renaming monitor or workspace YAML (incl. `rm -rf monitors/`)
   - mutating Sifflet MCP tools (open/close incident, + forward-compat verbs)
 
 The matching decision is "ask" (never silently allow these). Configure the hook
-with failClosed so a crash blocks the action rather than letting it through.
+with failClosed (Cursor) or `|| exit 2` (Claude Code) so a crash blocks the
+action rather than letting it through.
 """
 
 import json
@@ -31,6 +34,10 @@ TEMPLATE_RE = re.compile(r"(?:\.template\.ya?ml\b|/templates/)", re.IGNORECASE)
 
 # Monitor / workspace source files whose removal or rename is destructive.
 MONITOR_PATH_RE = re.compile(r"(?:workspace\.ya?ml|monitors/)", re.IGNORECASE)
+
+# ~/.sifflet/config.ini stores the API token in plain text; touching it can leak
+# the secret into the conversation or delete the local credentials.
+SIFFLET_CONFIG_RE = re.compile(r"\.sifflet[/\\]config\.ini", re.IGNORECASE)
 
 CURSOR_AGENT_MESSAGE = (
     "Sifflet guardrail intercepted a destructive or potentially-destructive action. "
@@ -64,6 +71,22 @@ def classify_shell(command):
             "This applies Monitors-as-Code changes to the remote Sifflet workspace and may "
             "delete or recreate monitors (recreation loses history). Confirm after reviewing "
             "the plan diff."
+        )
+
+    if re.search(r"\bsifflet\b.*\bworkspace\s+delete\b", c):
+        return (
+            "This deletes a Sifflet WORKSPACE and every monitor attached to it, with all "
+            "associated data (runs, incidents, history). This cannot be undone. Follow the "
+            "destructive-change confirmation protocol (typed token DELETE WORKSPACE) before "
+            "running it."
+        )
+
+    if SIFFLET_CONFIG_RE.search(c) and not re.search(r"\bsifflet\s+configure\b", c):
+        return (
+            "This command touches ~/.sifflet/config.ini, which stores the Sifflet API token "
+            "in plain text. Reading or copying it can leak the secret into the conversation. "
+            "Prefer the SIFFLET_API_TOKEN / SIFFLET_TOKEN environment variables or the "
+            "bundled launcher; confirm explicitly if direct access is truly required."
         )
 
     if re.search(r"\b(rm|git\s+rm|mv)\b", c) and not TEMPLATE_RE.search(c):
