@@ -81,7 +81,9 @@ def classify_shell(command):
             "running it."
         )
 
-    if SIFFLET_CONFIG_RE.search(c) and not re.search(r"\bsifflet\s+configure\b", c):
+    # No exemptions here: an agent composes the command string, so any
+    # "unless it mentions X" carve-out is a one-comment bypass.
+    if SIFFLET_CONFIG_RE.search(c):
         return (
             "This command touches ~/.sifflet/config.ini, which stores the Sifflet API token "
             "in plain text. Reading or copying it can leak the secret into the conversation. "
@@ -149,6 +151,11 @@ def _is_claude(event):
 
 def respond(event, permission, reason=None):
     if _is_claude(event):
+        if permission == "allow":
+            # Emit no decision so Claude Code's own permission flow applies.
+            # An explicit "allow" here would BYPASS the user's permission
+            # settings for every command the guard does not flag.
+            return
         out = {
             "hookSpecificOutput": {
                 "hookEventName": event.get("hook_event_name", "PreToolUse"),
