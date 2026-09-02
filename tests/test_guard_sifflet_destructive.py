@@ -25,7 +25,8 @@ def run_guard(payload, raw=None):
         timeout=10,
     )
     assert proc.returncode == 0, f"guard exited {proc.returncode}: {proc.stderr}"
-    return json.loads(proc.stdout), proc.returncode
+    out = json.loads(proc.stdout) if proc.stdout.strip() else None
+    return out, proc.returncode
 
 
 def cursor_shell(command):
@@ -145,6 +146,13 @@ def test_copy_config_ini_asks():
     assert cursor_permission(out) == "ask"
 
 
+def test_config_ini_comment_smuggling_still_asks():
+    # No carve-outs: mentioning "sifflet configure" in a comment must not
+    # exempt a command that touches the token file.
+    out, _ = run_guard(cursor_shell("cat ~/.sifflet/config.ini  # sifflet configure"))
+    assert cursor_permission(out) == "ask"
+
+
 # ------------------------------------------------------- monitor file rm/mv gates
 
 def test_rm_monitors_dir_asks():
@@ -185,9 +193,12 @@ def test_mcp_open_incident_asks_cursor_style_name():
     assert cursor_permission(out) == "ask"
 
 
-def test_mcp_readonly_tool_allowed():
-    out, _ = run_guard(claude_mcp("mcp__sifflet__search_asset"))
-    assert claude_permission(out) == "allow"
+def test_mcp_readonly_tool_defers_to_platform_on_claude():
+    # No decision emitted: Claude Code's own permission flow applies. An
+    # explicit "allow" would bypass the user's permission settings.
+    out, code = run_guard(claude_mcp("mcp__sifflet__search_asset"))
+    assert code == 0
+    assert out is None
 
 
 def test_mcp_future_mutating_verb_asks():
@@ -214,3 +225,17 @@ def test_claude_output_has_hook_specific_shape():
 def test_cursor_event_never_gets_claude_shape():
     out, _ = run_guard(cursor_shell("sifflet code workspace apply --file w.yaml"))
     assert "hookSpecificOutput" not in out
+
+
+def test_claude_benign_command_emits_no_decision():
+    out, code = run_guard(claude_bash("ls -la"))
+    assert code == 0
+    assert out is None
+
+
+def test_claude_dangerous_non_sifflet_command_not_auto_approved():
+    # The guard must never auto-approve commands outside its scope on Claude
+    # Code; it stays silent and the platform's permission prompt applies.
+    out, code = run_guard(claude_bash("rm -rf / --no-preserve-root"))
+    assert code == 0
+    assert out is None
