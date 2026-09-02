@@ -88,7 +88,7 @@ A bundled hook gates destructive or potentially-destructive actions and surfaces
 confirmation prompt before they run: `sifflet ... apply`, `--auto-approve`, removing or
 renaming monitor/`workspace.yaml` files, and mutating Sifflet MCP calls (incident
 open/close). The behavioral protocol lives in the `sifflet-quality-as-code` skill. The hook
-ships for both Cursor (`hooks/cursor-hooks.json`) and Claude Code (`hooks/claude-hooks.json`)
+ships for both Cursor (`hooks/cursor-hooks.json`) and Claude Code (`hooks/hooks.json`)
 and shares one script (`hooks/guard-sifflet-destructive.py`); it requires `python3` on PATH
 and is configured fail-closed.
 
