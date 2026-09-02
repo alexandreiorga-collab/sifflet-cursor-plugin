@@ -136,6 +136,8 @@ Protocol (every step, in order):
      is the exact count of deletions plus recreations.
    - Workspace deletion (`sifflet code workspace delete`): **`DELETE WORKSPACE`**
    - Mutating MCP tool call: **`CONFIRM SIFFLET MUTATE`**
+   - Reading or copying `~/.sifflet/config.ini`: plain-language explicit confirmation
+     (no token), after explaining why the file is needed and that it holds the API token.
    A casual "yes" / "ok" / "go ahead" does **not** satisfy a destructive action.
 5. **Never use `--auto-approve` interactively.** Only suggest it for reviewed CI/CD pipelines,
    and only after the user explicitly asks for the CI form.
