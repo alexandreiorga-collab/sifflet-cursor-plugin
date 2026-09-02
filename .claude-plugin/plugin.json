@@ -7,7 +7,7 @@
     "name": "Sifflet"
   },
   "homepage": "https://docs.siffletdata.com/docs/sifflet-mcp-server",
-  "repository": "https://github.com/siffletdata/cursor-plugin",
+  "repository": "https://github.com/alexandreiorga-collab/sifflet-cursor-plugin",
   "keywords": [
     "sifflet",
     "data-quality",
