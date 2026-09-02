@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-sifflet-destructive.py\"",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-sifflet-destructive.py\" || exit 2",
             "timeout": 15
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-sifflet-destructive.py\"",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-sifflet-destructive.py\" || exit 2",
             "timeout": 15
           }
         ]
