@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Guard test suite
+        run: |
+          pip install pytest
+          pytest tests/ -v
+
+      - name: Manifest and path validation
+        run: python3 scripts/validate_manifests.py
+
+      - name: Guard smoke check (real hook contract)
+        run: |
+          # A destructive command must come back as "ask"
+          echo '{"hook_event_name":"beforeShellExecution","command":"sifflet code workspace apply --file w.yaml"}' \
+            | python3 hooks/guard-sifflet-destructive.py | grep -q '"ask"'
+          # A benign Claude Code event must emit no decision
+          test -z "$(echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}' \
+            | python3 hooks/guard-sifflet-destructive.py)"
