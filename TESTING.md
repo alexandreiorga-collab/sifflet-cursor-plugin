@@ -44,8 +44,9 @@ Run on a machine (or container) without a previous install.
 
 **Cursor**
 
-1. Install **Sifflet** from the plugin marketplace; reload.
-2. Enable the `sifflet` MCP server in settings; repeat steps 5–6 above.
+1. Install from this repository — clone into `~/.cursor/plugins/local/sifflet` (or import the repo as a team marketplace); see README → Installation → Cursor. Reload Cursor.
+2. Open **Customize** and confirm the plugin's rules, skills, commands, and MCP server appear.
+3. Enable the `sifflet` MCP server in settings; repeat steps 5–6 above.
 
 ## 4. Live-tenant integration (staging tenant, throwaway workspace)
 
