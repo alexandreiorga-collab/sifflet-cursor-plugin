@@ -23,7 +23,19 @@ This plugin is provided as-is and is not an officially supported Sifflet product
 
 ### Cursor
 
-Install **Sifflet** from Cursor's plugin marketplace.
+This plugin is **not published on the Cursor Marketplace**, so it cannot be found by searching there. Install it from this repository instead, either way below (see [Cursor's plugin docs](https://cursor.com/docs/plugins)):
+
+**Option A — local plugin folder (individual install):**
+
+```bash
+git clone https://github.com/alexandreiorga-collab/sifflet-cursor-plugin.git ~/.cursor/plugins/local/sifflet
+```
+
+Restart Cursor (or run **Developer: Reload Window**), then open **Customize** and confirm the plugin's rules, skills, commands, and the `sifflet` MCP server appear. To update later, `git pull` in that folder and reload. On Teams/Enterprise plans this requires **Allow Local Plugin Imports** (Dashboard → Settings → Security & Identity → Marketplace and Plugins; off by default on Enterprise).
+
+**Option B — team marketplace (Teams/Enterprise; best for rolling out to a team):**
+
+An admin opens **Dashboard → Plugins → Add Marketplace → Import from Repo** and imports this repository; developers then install **Sifflet** from **Customize**. Enable Auto Refresh so pushes to `main` update the plugin automatically.
 
 ### Claude Code
 
@@ -129,6 +141,7 @@ and shares one script (`hooks/guard-sifflet-destructive.py`); it requires `pytho
 and is configured to fail closed if it crashes (Cursor via `failClosed`, Claude Code via a
 blocking exit code; a hook timeout on Claude Code is not blocked). Commands the guard does
 not flag are left to the platform's own permission flow — never auto-approved on Claude Code.
+The guard has a test suite in `tests/` (`pytest tests/`).
 
 ## Monitors as Code
 
