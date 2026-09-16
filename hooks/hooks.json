@@ -12,7 +12,7 @@
         ]
       },
       {
-        "matcher": "mcp__sifflet.*",
+        "matcher": "mcp__.*sifflet.*",
         "hooks": [
           {
             "type": "command",
