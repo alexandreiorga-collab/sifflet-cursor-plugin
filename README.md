@@ -161,6 +161,32 @@ Run `sifflet configure` before using Monitors as Code commands.
 
 ## Troubleshooting
 
+### Wrong numbers: two Sifflet MCP servers, two tenants
+
+**Symptom:** counts (incidents, monitors) from Claude Code disagree with the Sifflet UI, while Cursor gives the right answer.
+
+**Cause:** more than one Sifflet MCP server is connected. If you previously added a `sifflet` server by hand — often via `claude mcp add-from-claude-desktop`, which copies Claude Desktop's servers into Claude Code's own config — that server and this plugin's bundled server **both load**. Claude Code keys the plugin's server as `plugin:sifflet:sifflet`, so they do not collide and neither is dropped; the agent simply has two near-identical toolsets and may use either. If they point at different tenants, the answers are silently wrong.
+
+Note that Claude Code never reads `claude_desktop_config.json`. Disabling the server in Claude Desktop changes nothing here — Claude Code keeps its own copy in `~/.claude.json`.
+
+**Diagnose:**
+
+```bash
+claude mcp list          # shows every server; look for both `sifflet` and `plugin:sifflet:sifflet`
+claude mcp get sifflet   # shows the command, args, and scope of the hand-added one
+```
+
+**Fix — any of:**
+
+1. **Remove the duplicate** (best if you don't need it): `claude mcp remove sifflet -s local`, and also try `-s user` — `add-from-claude-desktop` defaults to **local** scope, so removing only from `user` can miss it.
+2. **Point both at the same tenant**, so it cannot matter which is chosen.
+3. **Isolate the session:** `claude --strict-mcp-config --mcp-config <plugin>/.mcp.json` loads only that file's servers. (Not available when an enterprise MCP config is present.)
+4. **Steer the agent** with a `CLAUDE.md` telling it to prefer the plugin's server. This works because both servers are loaded, but it relies on instruction-following — prefer 1–3 where you can.
+
+As a safety net, the `sifflet-mcp` skill requires the agent to state the tenant whenever it reports Sifflet data, so a wrong-tenant answer identifies itself.
+
+### Other issues
+
 If MCP tools do not appear: in Cursor, reload and confirm the `sifflet` MCP server is enabled in settings; in Claude Code, run `/plugin list` to confirm the plugin loaded and check the MCP server status.
 
 If authentication fails, run `sifflet configure` again, then reload the IDE.
