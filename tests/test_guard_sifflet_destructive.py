@@ -201,6 +201,47 @@ def test_mcp_readonly_tool_defers_to_platform_on_claude():
     assert out is None
 
 
+def test_mcp_plugin_scoped_tool_name_asks():
+    # A plugin-provided MCP server is keyed `plugin:<plugin>:<server>`, which
+    # sanitizes into the tool name mcp__plugin_sifflet_sifflet__<tool>.
+    out, _ = run_guard(claude_mcp("mcp__plugin_sifflet_sifflet__close_incident_by_id"))
+    assert claude_permission(out) == "ask"
+
+
+def test_mcp_plugin_scoped_readonly_defers():
+    out, code = run_guard(claude_mcp("mcp__plugin_sifflet_sifflet__search_asset"))
+    assert code == 0
+    assert out is None
+
+
+def test_hook_matcher_covers_both_mcp_name_shapes():
+    """The hooks.json matcher must catch user-scope AND plugin-scope tool names.
+
+    Claude Code names MCP tools mcp__<server>__<tool>. A plugin's server is
+    keyed plugin:<plugin>:<server>, so its tools arrive as
+    mcp__plugin_<plugin>_<server>__<tool>. A matcher anchored on "mcp__sifflet"
+    silently misses the plugin's own tools.
+    """
+    import re
+
+    hooks = json.loads(
+        (GUARD.parent / "hooks.json").read_text(encoding="utf-8")
+    )
+    matchers = [
+        entry["matcher"]
+        for entry in hooks["hooks"]["PreToolUse"]
+        if entry.get("matcher", "").startswith("mcp__")
+    ]
+    assert matchers, "no MCP matcher found in hooks/hooks.json"
+    for shape in (
+        "mcp__sifflet__close_incident_by_id",
+        "mcp__plugin_sifflet_sifflet__close_incident_by_id",
+    ):
+        assert any(re.search(m, shape) for m in matchers), (
+            f"no matcher in {matchers} covers {shape}"
+        )
+
+
 def test_mcp_future_mutating_verb_asks():
     # Forward-compat heuristic: unknown tool with a mutating verb + sifflet context.
     out, _ = run_guard(claude_mcp("mcp__sifflet__delete_monitor"))
