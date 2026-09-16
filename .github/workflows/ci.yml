@@ -23,6 +23,9 @@ jobs:
       - name: Manifest and path validation
         run: python3 scripts/validate_manifests.py
 
+      - name: Guard self-test (the script users run to verify an install)
+        run: bash scripts/selftest.sh
+
       - name: Guard smoke check (real hook contract)
         run: |
           # A destructive command must come back as "ask"
