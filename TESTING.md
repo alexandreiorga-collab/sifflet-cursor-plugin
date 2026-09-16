@@ -14,7 +14,23 @@ python3 scripts/validate_manifests.py   # manifests parse, referenced paths exis
 Both run in GitHub Actions (`.github/workflows/ci.yml`) plus a smoke check that pipes
 real hook events through the guard.
 
-## 2. Guard spot-checks (no IDE needed)
+## 2. Guard self-test (no IDE, token, tenant, or network needed)
+
+One command runs all 14 guardrail checks against an installed or cloned plugin:
+
+```bash
+bash scripts/selftest.sh
+# or against the installed copy:
+bash ~/.claude/plugins/cache/sifflet-local/sifflet/*/scripts/selftest.sh
+```
+
+It covers: destructive actions ask (apply, `--auto-approve`, workspace delete, monitor-file
+removal, `config.ini` reads including comment-smuggled ones), MCP mutations ask in **both**
+tool-name shapes (`mcp__sifflet__*` and `mcp__plugin_<plugin>_<server>__*`), safe actions are
+not blocked, nothing is auto-approved on Claude Code, and the hook fails closed when
+`python3` is unavailable. Exit code 0 means everything passed.
+
+Individual probes, if you want to see raw hook output:
 
 ```bash
 # Destructive command -> "ask"
@@ -24,9 +40,6 @@ echo '{"hook_event_name":"beforeShellExecution","command":"sifflet code workspac
 # Benign Claude Code event -> empty output (defers to platform permissions)
 echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}' \
   | python3 hooks/guard-sifflet-destructive.py
-
-# Fail-closed: with python3 unavailable the hook command must exit 2 (blocking)
-sh -c 'PATH=/nonexistent python3 hooks/guard-sifflet-destructive.py || exit 2'; echo "exit=$?"
 ```
 
 ## 3. Install smoke test
