@@ -18,6 +18,17 @@ description: Use the Sifflet Model Context Protocol server to explore catalog as
 3. Set **`SIFFLET_API_TOKEN`** and **`SIFFLET_BACKEND_URL`** for MCP: the plugin’s MCP configuration forwards those env vars when the IDE can resolve them, and the bundled launcher falls back to **`~/.sifflet/config.ini`** (from **`sifflet configure`**) when they are unset or unresolved placeholders. See **configure-sifflet-auth**. Shell-only exports (**`~/.zshrc`**) are not visible to MCP unless they are also present on the IDE’s app process, so a correct **`echo`** in the integrated terminal does not prove MCP sees the variable. (The Sifflet **CLI** uses a different variable name for the token: **`SIFFLET_TOKEN`**.)
 4. Use the backend URL form expected by [sifflet-mcp](https://github.com/siffletdata/sifflet-mcp), usually **`https://<tenant>.siffletdata.com/api/`** (note the **`/api/`** suffix).
 
+## Always name the tenant
+
+**Every time you report Sifflet data — incident counts, monitor lists, catalog results, lineage — say which tenant or backend URL it came from.** A bare number cannot be checked against the UI; a number labelled with its tenant can.
+
+This matters because more than one Sifflet MCP server can be connected at once. A server the user added by hand (`claude mcp add`, or imported with `claude mcp add-from-claude-desktop`) and this plugin's bundled server **both load** — Claude Code keys the plugin's as `plugin:<plugin>:sifflet`, so they do not collide and neither is dropped. If they point at different tenants, picking the wrong one returns confidently wrong numbers.
+
+- Before the first Sifflet call in a session, establish which server you are using and which tenant it points at; if two Sifflet servers are connected, say so and ask which the user wants.
+- Prefer this plugin's bundled server unless the user says otherwise.
+- Never guess the tenant from context. If you cannot determine it, say so rather than reporting unattributed numbers.
+- If a user reports numbers that disagree with the Sifflet UI, suspect a second connected server first: `claude mcp list` shows every Sifflet server and its command.
+
 ## Working style
 
 - Prefer **discovery tools first** (`search_asset`, `asset_by_urn`) so YAML and proposals use real URNs, owners, and tags.
