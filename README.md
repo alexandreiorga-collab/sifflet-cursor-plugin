@@ -141,7 +141,7 @@ and shares one script (`hooks/guard-sifflet-destructive.py`); it requires `pytho
 and is configured to fail closed if it crashes (Cursor via `failClosed`, Claude Code via a
 blocking exit code; a hook timeout on Claude Code is not blocked). Commands the guard does
 not flag are left to the platform's own permission flow — never auto-approved on Claude Code.
-The guard has a test suite in `tests/` (`pytest tests/`).
+Verify any install with `bash scripts/selftest.sh` (see [Testing](#testing)).
 
 ## Monitors as Code
 
@@ -156,8 +156,22 @@ Run `sifflet configure` before using Monitors as Code commands.
 
 ## Testing
 
-- Automated: `pytest tests/` runs the guard's test suite; `python3 scripts/validate_manifests.py` checks every manifest, hook config, and referenced path. Both run in CI on every pull request.
-- Manual: [TESTING.md](TESTING.md) has the install smoke-test checklist, guardrail spot-checks, the live-tenant test script, and red-team prompts.
+**Fastest check — verify an install in one command.** After installing or updating the plugin:
+
+```bash
+bash scripts/selftest.sh          # from a clone
+# or, against the installed copy:
+bash ~/.claude/plugins/cache/sifflet-local/sifflet/*/scripts/selftest.sh
+```
+
+It runs 14 offline checks of the safety guardrail — destructive actions ask, safe actions are not blocked, both MCP tool-name shapes are matched, and the hook fails closed — with no token, tenant, or network required.
+
+Also available:
+
+- `pytest tests/` — the guard's full test suite.
+- `python3 scripts/validate_manifests.py` — every manifest parses, referenced paths exist, hooks are fail-closed.
+- All three run in CI on every pull request.
+- [TESTING.md](TESTING.md) — install smoke-test checklist, live-tenant test script, and red-team prompts for the behavioral protocol.
 
 ## Troubleshooting
 
