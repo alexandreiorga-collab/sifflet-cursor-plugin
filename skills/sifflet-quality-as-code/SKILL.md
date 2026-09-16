@@ -125,9 +125,12 @@ Protocol (every step, in order):
 
 1. **Run plan first.** For apply, run `sifflet code workspace plan --file <workspace>` and
    show the output. Never apply from a stale plan.
-2. **Name the blast radius.** List every monitor the plan will **delete** and every monitor
-   it will **recreate** (recreation loses history). For large bulk changes, show the grouped
-   counts (`N delete, M recreate, K create`) plus a representative list rather than every name.
+2. **Name the blast radius — and the tenant.** State which Sifflet tenant / backend URL the
+   change will hit (the CLI's, from `~/.sifflet/config.ini` or `SIFFLET_BACKEND_URL`), because
+   it is not necessarily the tenant the MCP server has been answering questions about. Then
+   list every monitor the plan will **delete** and every monitor it will **recreate**
+   (recreation loses history). For large bulk changes, show the grouped counts
+   (`N delete, M recreate, K create`) plus a representative list rather than every name.
    For a workspace deletion, list the workspace name and how many monitors it contains.
 3. **State irreversibility.** Say plainly what cannot be undone (deleted monitors, lost history).
 4. **Require the typed token** (exact, case-sensitive, typed by the user this turn):
