@@ -118,6 +118,7 @@ The plugin registers the `sifflet` MCP server through `mcp.json` (Cursor) and `.
 
 - `sifflet-mcp` - explore catalog assets, monitors, incidents, and lineage before changing data or YAML.
 - `sifflet-quality-as-code` - draft and refine Sifflet monitor and workspace YAML using MCP context and the Monitors as Code schema.
+- `sifflet-api` - call the REST API for what MCP and the CLI cannot do: lineage traversal, bulk export, workspace operations. Covers the public v2 surface and the **alpha** `/v1` and `/ui/v1` surfaces, which the agent is required to flag as alpha when it uses them.
 
 ### Rules
 
@@ -134,14 +135,34 @@ The plugin registers the `sifflet` MCP server through `mcp.json` (Cursor) and `.
 A bundled hook gates destructive or potentially-destructive actions and surfaces a native
 confirmation prompt before they run: `sifflet ... apply`, `--auto-approve`,
 `sifflet code workspace delete`, removing or renaming monitor/`workspace.yaml` files,
-reads of `~/.sifflet/config.ini` (it stores the API token), and mutating Sifflet MCP calls
-(incident open/close). The behavioral protocol lives in the `sifflet-quality-as-code` skill.
+reads of `~/.sifflet/config.ini` (it stores the API token), mutating Sifflet MCP calls
+(incident open/close), and **mutating REST API calls** — `POST /v1/workspaces/{id}` is
+apply and `DELETE /v1/workspaces/{id}` is delete, so without this they would bypass every
+gate above. Read-only calls stay free: GETs, `dryRun=true`, and read-only POSTs such as
+`/search` and `/failing-rows`. The behavioral protocol lives in the `sifflet-quality-as-code` skill.
 The hook ships for both Cursor (`hooks/cursor-hooks.json`) and Claude Code (`hooks/hooks.json`)
 and shares one script (`hooks/guard-sifflet-destructive.py`); it requires `python3` on PATH
 and is configured to fail closed if it crashes (Cursor via `failClosed`, Claude Code via a
 blocking exit code; a hook timeout on Claude Code is not blocked). Commands the guard does
 not flag are left to the platform's own permission flow — never auto-approved on Claude Code.
 Verify any install with `bash scripts/selftest.sh` (see [Testing](#testing)).
+
+## REST API
+
+For what MCP and the CLI do not cover — lineage traversal above all — use the bundled
+helper, which resolves credentials the same way the MCP launcher does so the token never
+reaches the transcript:
+
+```bash
+scripts/sifflet-api.sh GET  /ui/v1/lineages/<urn>/downstreams
+scripts/sifflet-api.sh --yaml GET /v1/rules/_all-as-code?mode=STRICT
+scripts/sifflet-api.sh POST /ui/v1/assets/search --data '{"textSearch":"orders"}'
+```
+
+Three surfaces, and only one of them is stable: `/api/v2/...` is public and documented,
+while `/api/v1/...` and `/api/ui/v1/...` are **alpha** — the latter backs Sifflet's own UI
+and can change with any UI release. The `sifflet-api` skill requires the agent to tell you
+when it is relying on an alpha endpoint. See [the API reference](https://docs.siffletdata.com/reference).
 
 ## Monitors as Code
 
@@ -164,7 +185,7 @@ bash scripts/selftest.sh          # from a clone
 bash ~/.claude/plugins/cache/sifflet-local/sifflet/*/scripts/selftest.sh
 ```
 
-It runs 14 offline checks of the safety guardrail — destructive actions ask, safe actions are not blocked, both MCP tool-name shapes are matched, and the hook fails closed — with no token, tenant, or network required.
+It runs 22 offline checks of the safety guardrail — destructive actions ask, safe actions are not blocked, both MCP tool-name shapes are matched, and the hook fails closed — with no token, tenant, or network required.
 
 Also available:
 

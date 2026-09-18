@@ -16,7 +16,7 @@ real hook events through the guard.
 
 ## 2. Guard self-test (no IDE, token, tenant, or network needed)
 
-One command runs all 14 guardrail checks against an installed or cloned plugin:
+One command runs all 22 guardrail checks against an installed or cloned plugin:
 
 ```bash
 bash scripts/selftest.sh
