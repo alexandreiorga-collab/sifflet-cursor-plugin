@@ -153,6 +153,147 @@ def test_config_ini_comment_smuggling_still_asks():
     assert cursor_permission(out) == "ask"
 
 
+# --------------------------------------------------------- Sifflet REST API
+# The API can do everything the CLI can, so an ungated API call would be a hole
+# straight through every CLI gate. POST /v1/workspaces/{id} is apply;
+# DELETE /v1/workspaces/{id} is delete.
+
+API = "https://acme.siffletdata.com/api"
+
+
+def test_api_workspace_apply_asks():
+    out, _ = run_guard(cursor_shell(f"curl -X POST {API}/v1/workspaces/abc-123 -d @ws.json"))
+    assert cursor_permission(out) == "ask"
+    assert "apply" in out["user_message"].lower()
+
+
+def test_api_workspace_apply_via_helper_asks():
+    out, _ = run_guard(cursor_shell("scripts/sifflet-api.sh POST /v1/workspaces/abc-123 --data @ws.json"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_api_workspace_apply_dry_run_is_not_gated():
+    # dryRun=true is the API's `plan` and must stay free, like the CLI's plan.
+    out, _ = run_guard(cursor_shell(
+        f"curl -X POST '{API}/v1/workspaces/abc-123?dryRun=true' -d @ws.json"))
+    assert cursor_permission(out) == "allow"
+
+
+def test_api_workspace_apply_with_untrack_delete_demands_delete_count():
+    out, _ = run_guard(cursor_shell(
+        f"curl -X POST '{API}/v1/workspaces/abc?objectUntrackAction=DELETE' -d @ws.json"))
+    assert cursor_permission(out) == "ask"
+    assert "DELETE <N>" in out["user_message"]
+
+
+def test_api_workspace_delete_asks_for_workspace_token():
+    out, _ = run_guard(cursor_shell(f"curl -X DELETE {API}/v1/workspaces/abc-123"))
+    assert cursor_permission(out) == "ask"
+    assert "DELETE WORKSPACE" in out["user_message"]
+
+
+def test_api_workspace_delete_cascade_is_called_out():
+    out, _ = run_guard(cursor_shell(
+        f"curl -X DELETE '{API}/v1/workspaces/abc?cascadeDelete=ALL'"))
+    assert cursor_permission(out) == "ask"
+    assert "cascadeDelete=ALL" in out["user_message"]
+
+
+def test_api_delete_monitor_asks():
+    out, _ = run_guard(cursor_shell(f"curl -X DELETE {API}/ui/v1/rules/7edf1177"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_api_put_and_patch_ask():
+    for verb in ("PUT", "PATCH"):
+        out, _ = run_guard(cursor_shell(f"curl -X {verb} {API}/ui/v1/tags/abc -d '{{}}'"))
+        assert cursor_permission(out) == "ask", verb
+
+
+def test_api_post_body_without_explicit_method_is_treated_as_post():
+    out, _ = run_guard(cursor_shell(f"curl {API}/ui/v1/tags --data '{{\"name\":\"x\"}}'"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_api_read_only_posts_are_not_gated():
+    # Gating these would break the two most common read calls.
+    for path in ("/ui/v1/assets/search", "/ui/v1/incidents/search",
+                 "/ui/v1/assets/convert-uri-to-urn", "/ui/v1/rules/abc/failing-rows"):
+        out, _ = run_guard(cursor_shell(f"curl -X POST {API}{path} -d '{{}}'"))
+        assert cursor_permission(out) == "allow", path
+
+
+def test_api_lineage_get_is_not_gated():
+    for path in ("/ui/v1/lineages/urn:x/downstreams", "/ui/v1/lineages/urn:x/upstreams",
+                 "/v1/workspaces", "/v1/rules/_all-as-code?mode=STRICT"):
+        out, _ = run_guard(cursor_shell(f"scripts/sifflet-api.sh GET {path}"))
+        assert cursor_permission(out) == "allow", path
+
+
+# Regression tests: every one of these was a live bypass found in review.
+
+def test_api_method_flag_without_space_is_caught():
+    out, _ = run_guard(cursor_shell(f"curl -XDELETE {API}/v1/workspaces/abc"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_api_method_flag_with_equals_is_caught():
+    out, _ = run_guard(cursor_shell(f"curl --request=DELETE {API}/v1/workspaces/abc"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_api_httpie_positional_verb_is_caught():
+    for client in ("http", "https", "xh"):
+        out, _ = run_guard(cursor_shell(f"{client} DELETE {API}/v1/workspaces/abc"))
+        assert cursor_permission(out) == "ask", client
+
+
+def test_api_wget_method_flag_is_caught():
+    out, _ = run_guard(cursor_shell(f"wget --method=DELETE {API}/v1/workspaces/abc"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_self_hosted_sifflet_is_guarded():
+    # Target detection must not depend on siffletdata.com, or every self-hosted
+    # deployment is unguarded.
+    out, _ = run_guard(cursor_shell("curl -X DELETE https://sifflet.acme.com/api/v1/workspaces/abc"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_backend_url_variable_form_is_guarded():
+    # The shape an agent following the skill is most likely to write.
+    out, _ = run_guard(cursor_shell("curl -X DELETE $SIFFLET_BACKEND_URL/v1/workspaces/abc"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_read_only_allowlist_cannot_be_laundered_via_a_body_path():
+    # A body file whose path contains /search must not buy a pass for a write.
+    out, _ = run_guard(cursor_shell(
+        "scripts/sifflet-api.sh POST /ui/v1/tags --data @/tmp/search/body.json"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_dry_run_in_a_comment_does_not_disarm_the_apply_gate():
+    out, _ = run_guard(cursor_shell(
+        f"curl -X POST {API}/v1/workspaces/abc -d @ws.json  # not dryRun=true"))
+    assert cursor_permission(out) == "ask"
+
+
+def test_mentioning_an_endpoint_in_prose_is_not_gated():
+    out, _ = run_guard(cursor_shell('echo "see POST /v1/workspaces/abc in the docs"'))
+    assert cursor_permission(out) == "allow"
+
+
+def test_non_sifflet_api_calls_are_not_gated():
+    out, _ = run_guard(cursor_shell("curl -X DELETE https://api.github.com/repos/x/y"))
+    assert cursor_permission(out) == "allow"
+
+
+def test_api_gate_applies_on_claude_code_too():
+    out, _ = run_guard(claude_bash(f"curl -X DELETE {API}/v1/workspaces/abc"))
+    assert claude_permission(out) == "ask"
+
+
 # ------------------------------------------------------- monitor file rm/mv gates
 
 def test_rm_monitors_dir_asks():
